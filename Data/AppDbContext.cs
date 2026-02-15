@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     
     public DbSet<Room> Rooms { get; set; }
     public DbSet<Booking> Bookings { get; set; }
+    public DbSet<BookingHistory> BookingHistories { get; set; }
     
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
