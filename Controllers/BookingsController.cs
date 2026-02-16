@@ -27,6 +27,8 @@ public class BookingsController : ControllerBase
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate,
         [FromQuery] string? search,
+        [FromQuery] string? sortBy = "startTime",
+        [FromQuery] string? sortOrder = "desc",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
     {
@@ -68,10 +70,35 @@ public class BookingsController : ControllerBase
                     (b.Purpose != null && b.Purpose.Contains(search)));
             }
 
+            // Sorting
+            query = sortBy?.ToLower() switch
+            {
+                "starttime" => sortOrder?.ToLower() == "asc" 
+                    ? query.OrderBy(b => b.StartTime) 
+                    : query.OrderByDescending(b => b.StartTime),
+                    
+                "endtime" => sortOrder?.ToLower() == "asc" 
+                    ? query.OrderBy(b => b.EndTime) 
+                    : query.OrderByDescending(b => b.EndTime),
+                    
+                "createdat" => sortOrder?.ToLower() == "asc" 
+                    ? query.OrderBy(b => b.CreatedAt) 
+                    : query.OrderByDescending(b => b.CreatedAt),
+                    
+                "borrowername" => sortOrder?.ToLower() == "asc" 
+                    ? query.OrderBy(b => b.BorrowerName) 
+                    : query.OrderByDescending(b => b.BorrowerName),
+                    
+                "status" => sortOrder?.ToLower() == "asc" 
+                    ? query.OrderBy(b => b.Status) 
+                    : query.OrderByDescending(b => b.Status),
+                    
+                _ => query.OrderByDescending(b => b.StartTime) // default
+            };
+
             var totalCount = await query.CountAsync();
             
             var bookings = await query
-                .OrderByDescending(b => b.StartTime)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(b => new BookingResponseDto
@@ -97,7 +124,9 @@ public class BookingsController : ControllerBase
                 totalCount,
                 page,
                 pageSize,
-                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                sortBy,
+                sortOrder
             });
         }
         catch (Exception ex)
@@ -347,8 +376,6 @@ public class BookingsController : ControllerBase
         }
     }
 
-    // ============== STATUS MANAGEMENT ==============
-
     // PATCH: api/bookings/5/status
     [HttpPatch("{id}/status")]
     public async Task<ActionResult<StatusUpdateResponseDto>> UpdateBookingStatus(int id, [FromBody] UpdateStatusDto statusDto)
@@ -392,7 +419,7 @@ public class BookingsController : ControllerBase
                 NewStatus = newStatus.ToString(),
                 Notes = statusDto.Notes,
                 ChangedAt = DateTime.UtcNow,
-                ChangedBy = "System" // Nanti diganti dengan user login
+                ChangedBy = "System"
             };
 
             _context.BookingHistories.Add(history);
